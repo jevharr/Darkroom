@@ -4,11 +4,11 @@ import RPi_I2C_driver as i2c
 import re
 import time
 import datetime
-import board
+from board import *
 from pad4pi import rpi_gpio
 from subprocess import Popen, PIPE
 import digitalio
-import adafruit_character_lcd.character_lcd as characterlcd
+#import adafruit_character_lcd.character_lcd as characterlcd
 
 mylcd = i2c.lcd()
 ROW_PINS = [21, 20, 16, 12]
@@ -20,7 +20,15 @@ KEYPAD = [[1, 2, 3, "A"],
 
 factory = rpi_gpio.KeypadFactory()
 keypad = factory.create_keypad(keypad=KEYPAD, row_pins=ROW_PINS, col_pins=COL_PINS)
-
+led = digitalio.DigitalInOut(D23)
+led.direction = digitalio.Direction.OUTPUT
+print(led.value)
+safelight1 = digitalio.DigitalInOut(D7)
+safelight.direction = digitalio.Direction.OUTPUT
+safelight2 = digitalio.DigitalInOut(D8)
+safelight.direction = digitalio.Direction.OUTPUT
+safelight3 = digitalio.DigitalInOut(D25)
+safelight.direction = digitalio.Direction.OUTPUT
 
 # get input from the keypad
 def time_input(key):
@@ -48,12 +56,36 @@ def time_input(key):
 #		print(q.search(lcd_message_input2, 0).group())
 		mylcd.lcd_display_string(lcd_message_input2, 2)
 	if key.isnumeric() and re.search(".$", lcd_message_input2).group() != 'X':
-		print(lcd_message_input2)
-		print("minutes search: ", q.search(lcd_message_input2, 0))
-		print("minutes group: ", q.search(lcd_message_input2, 0).group())
-		print("minutes*60: ", int(q.search(lcd_message_input2, 0).group())*60)
+#		print(lcd_message_input2)
+#		print("minutes search: ", q.search(lcd_message_input2, 0))
+#		print("minutes group: ", q.search(lcd_message_input2, 0).group())
+#		print("minutes*60: ", int(q.search(lcd_message_input2, 0).group())*60)
 		seconds = int(q.search(lcd_message_input2, 0).group()) * 60 + int(r.search(lcd_message_input2, 0).group())
 	return(0)
+
+def enlarger_switch(on_off):
+	if on_off:
+		print("enlarger on")
+	else:
+		print("enlarger off")
+
+def safelight_switch(on_off):
+	if on_off:
+		print("safelight on")
+		led.value = True
+	else:
+		print("safelight off")
+		led.value = False
+
+def toggle_safelight(input):
+	global state
+	if state == 0:
+		state = 1
+	elif state ==1:
+		state = 2
+	else:
+		state = 3
+	return 0
 
 def key_press(key):
 	return(key)
@@ -66,6 +98,8 @@ def previous_time(x):
 
 # count down to 0 from the entered value
 def countdown_timer(x, now=datetime.datetime.now):
+	enlarger_switch(1)
+	safelight_switch(0)
 	target = now()
 	one_second_later = datetime.timedelta(seconds=1)
 	for remaining in range(seconds, -1, -1):
@@ -77,7 +111,8 @@ def countdown_timer(x, now=datetime.datetime.now):
 	mylcd.lcd_clear()
 	mylcd.lcd_display_string('A to start', 1)
 	mylcd.lcd_display_string('B to repeat', 2)
-
+	enlarger_switch(0)
+	safelight_switch(1)
 	return 0
 
 def top_switch(key):
@@ -96,7 +131,9 @@ def top_switch(key):
 		8: time_input,
 		9: time_input,
 		'B': previous_time,
-		'D': countdown_timer
+		'D': countdown_timer,
+		'C': toggle_safelight,
+		'*': toggle_safelight
 	}
 	# get the function from the_switch
 	global mode
